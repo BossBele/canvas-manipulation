@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canvas Manipulation</title>
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+  <link rel="stylesheet" href="/resources/demos/style.css">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 50vh;
+    }
+
+    #draggable {
+      width: 150px;
+      height: 150px;
+      padding: 16px;
+      border-style: dashed;
+      border-width: 2px;
+    }
+
+    #perspective-handle {
+      width: 100%;
+      height: 100%;
+    }
+
+    .ui-widget-header {
+      width: 100%;
+      height: 100%;
+      cursor: move;
+      margin: 0;
+    }
+
+    /*  */
+    .cropzee-outline-handle {
+      z-index: 3;
+      background: white;
+      width: 10px;
+      height: 10px;
+      border-radius: 100%;
+      box-sizing: border-box;
+      border: 1px solid #dddddd;
+    }
+
+    .cropzee-perspective-handle {
+      cursor: grab;
+      position: absolute;
+    }
+
+    #nw-outline-handle,
+    #nw-perspective-handle {
+      left: -5px;
+      top: -5px;
+    }
+
+    #ne-outline-handle,
+    #ne-perspective-handle {
+      top: -5px;
+      right: -5px;
+    }
+
+    #sw-outline-handle,
+    #sw-perspective-handle {
+      bottom: -5px;
+      left: -5px;
+    }
+
+    #se-outline-handle,
+    #se-perspective-handle {
+      bottom: -5px;
+      right: -5px;
+    }
+
+    #n-outline-handle {
+      top: -5px;
+      left: calc(50% - 5px);
+    }
+
+    #s-outline-handle {
+      bottom: -5px;
+      left: calc(50% - 5px);
+    }
+
+    #w-outline-handle {
+      left: -5px;
+      top: calc(50% - 5px);
+    }
+
+    #e-outline-handle {
+      right: -5px;
+      top: calc(50% - 5px);
+    }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+  <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+  <script src="perspective-js/dist/perspective.js"></script>
+  <script>
+    window.perspective = {};
+    $(function () {
+      $("#draggable").draggable({
+        containment: "parent",
+        handle: "#perspective-handle",
+        drag: function (event, ui) {
+
+          console.log(event, ui)
+          // Keep the left edge of the element
+          // at least 100 pixels from the container
+          // ui.position.left = Math.min( 100, ui.position.left );
+        }
+      }).resizable({
+        handles: {
+          'nw': '#nw-outline-handle',
+          'ne': '#ne-outline-handle',
+          'sw': '#sw-outline-handle',
+          'se': '#se-outline-handle',
+          'n': '#n-outline-handle',
+          'e': '#e-outline-handle',
+          's': '#s-outline-handle',
+          'w': '#w-outline-handle',
+        },
+        resize: function (event, ui) {
+          // $("#perspective-handle").resizable("destroy");
+          // ui.size.height = Math.round(ui.size.height / 30) * 30;
+          const handle = document.getElementById("perspective-handle");
+
+          const canvas = document.getElementById("canvas");
+
+          const { height, width } = ui.size;
+
+          const image = new Image(width - 32, height - 32);
+          image.src = "perspective-js/demo/firefox.jpg";
+
+          handle.style.width = `${image.width}px`;
+          handle.style.height = `${image.height}px`;
+
+          image.style.width = `${image.width}px`;
+          image.style.height = `${image.height}px`;
+          console.log(ui.size)
+          canvas.style.width = `${image.width}px`;
+          canvas.style.height = `${image.height}px`;
+
+          canvas.width = image.width;
+          canvas.height = image.height;
+          const ctx = canvas.getContext("2d");
+
+          const p = new Perspective(ctx, image);
+          p.draw([
+            [0, 0],                               // Top-left [x, y]
+            [image.width, 0],                 // Top-right [x, y]
+            [image.width, image.height],  // bottom-right [x, y]
+            [0, image.height]                      // bottom-left [x, y]
+          ]);
+
+          // $("#perspective-handle").resizable({
+          //   handles: {
+          //     'nw': '#nw-perspective-handle',
+          //     'ne': '#ne-perspective-handle',
+          //     'sw': '#sw-perspective-handle',
+          //     'se': '#se-perspective-handle',
+          //   },
+          //   resize: function (event, ui) {
+          //     console.log(ui)
+          //   },
+          // });
+        }
+      });
+
+      // $("#perspective-handle").resizable({
+      //   resize: function (event, ui) {
+      //     console.log(ui)
+      //   },
+      //   handles: {
+      //     'nw': '#nw-perspective-handle',
+      //     'ne': '#ne-perspective-handle',
+      //     'sw': '#sw-perspective-handle',
+      //     'se': '#se-perspective-handle',
+      //   },
+      // });
+
+      $(".cropzee-perspective-handle").draggable({
+        containment: "#draggable",
+        // handle: 'p',
+        scroll: false,
+        drag: function () {
+          var $this = $(this);
+          var thisPos = $this.position();
+          var parentPos = $this.parent().position();
+
+          var x = thisPos.left - parentPos.left;
+          var y = thisPos.top - parentPos.top;
+
+          window.perspective[$this.attr('id').split('-')[0]] = [x, y];
+          // console.log(typeof x, typeof y);
+          onInnerResize()
+        }
+      });
+    });
+  </script>
+  <script>
+    function onInnerResize() {
+      // const handle = document.getElementById("perspective-handle");
+
+      const canvas = document.getElementById("canvas");
+
+      const { offsetHeight: height, offsetWidth: width } = canvas;
+
+      const image = new Image(width, height);
+      image.src = "perspective-js/demo/firefox.jpg";
+
+      // handle.style.width = `${image.width}px`;
+      // handle.style.height = `${image.height}px`;
+
+      image.style.width = `${image.width}px`;
+      image.style.height = `${image.height}px`;
+
+      canvas.style.width = `${image.width}px`;
+      canvas.style.height = `${image.height}px`;
+
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const ctx = canvas.getContext("2d");
+
+      const { nw = [0, 0], ne = [image.width, 0], se = [image.width, image.height], sw = [0, image.height] } = window.perspective;
+      // return console.log([
+      //   nw,                               // Top-left [x, y]
+      //   ne,                 // Top-right [x, y]
+      //   se,  // bottom-right [x, y]
+      //   sw                      // bottom-left [x, y]
+      // ])
+      const p = new Perspective(ctx, image);
+      p.draw([
+        nw,                               // Top-left [x, y]
+        ne,                 // Top-right [x, y]
+        se,  // bottom-right [x, y]
+        sw                      // bottom-left [x, y]
+      ]);
+    }
+  </script>
+  <!--  -->
+</head>
+
+<body>
+
+  <div id="draggable" class="ui-widget-content" style="position: relative;">
+
+    <canvas id="canvas" height="100%" width="100%"></canvas>
+    <div id="perspective-handle" style="position: absolute; top: 16px; left: 16px; height: 100%; width: 100%;">
+      <div class="cropzee-outline-handle cropzee-perspective-handle" id="nw-perspective-handle"></div>
+      <div class="cropzee-outline-handle cropzee-perspective-handle" id="ne-perspective-handle"></div>
+      <div class="cropzee-outline-handle cropzee-perspective-handle" id="sw-perspective-handle"></div>
+      <div class="cropzee-outline-handle cropzee-perspective-handle" id="se-perspective-handle"></div>
+    </div>
+    <!-- <p class="ui-widget-header">
+      Drag me around
+    </p> -->
+    <div class="cropzee-outline-handle ui-resizable-handle ui-resizable-nw" id="nw-outline-handle"></div>
+    <div class="cropzee-outline-handle ui-resizable-handle ui-resizable-ne" id="ne-outline-handle"></div>
+    <div class="cropzee-outline-handle ui-resizable-handle ui-resizable-sw" id="sw-outline-handle"></div>
+    <div class="cropzee-outline-handle ui-resizable-handle ui-resizable-se" id="se-outline-handle"></div>
+    <div class="cropzee-outline-handle ui-resizable-handle ui-resizable-n" id="n-outline-handle"></div>
+    <div class="cropzee-outline-handle ui-resizable-handle ui-resizable-s" id="s-outline-handle"></div>
+    <div class="cropzee-outline-handle ui-resizable-handle ui-resizable-e" id="e-outline-handle"></div>
+    <div class="cropzee-outline-handle ui-resizable-handle ui-resizable-w" id="w-outline-handle"></div>
+  </div>
+
+
+  <script>
+    const handle = document.getElementById("perspective-handle");
+
+    const canvas = document.getElementById("canvas");
+    const image = new Image(150 - 32, 150 - 32);
+
+    handle.style.width = `${image.width}px`;
+    handle.style.height = `${image.height}px`;
+
+    let p;
+
+    image.onload = function () {
+      canvas.width = image.width;
+      canvas.height = image.height;
+
+      canvas.style.width = `${image.width}px`;
+      canvas.style.height = `${image.height}px`;
+
+      const ctx = canvas.getContext("2d");
+      p = new Perspective(ctx, image);
+      p.draw(
+        [
+          [0, 0],                               // Top-left [x, y]
+          [image.width, 0],                 // Top-right [x, y]
+          [image.width, image.height],  // bottom-right [x, y]
+          [0, image.height]                      // bottom-left [x, y]
+        ]
+        // [
+        //   [20, 17],
+        //   [118, 0],
+        //   [118, 118],
+        //   [0, 118]
+        // ]
+      );
+    }
+    image.src = "perspective-js/demo/firefox.jpg";
+  </script>
+</body>
+
+</html>
